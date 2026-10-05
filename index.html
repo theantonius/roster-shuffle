@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Roster Shuffle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: tool header with one primary action; inputs in a two-column grid; result table + per-person check below */
+:root {
+  --bg: #f3f5f8;
+  --surface: #ffffff;
+  --ink: #18202e;
+  --muted: #5b6577;
+  --line: #d9dee7;
+  --accent: #2747c9;
+  --accent-ink: #ffffff;
+  --accent-soft: #e6ebfb;
+  --ok: #1d7a4c;
+  --ok-soft: #e2f3ea;
+  --bad: #b3261e;
+  --bad-soft: #fbe7e5;
+  --warn: #8a5a00;
+  --warn-soft: #fbf0d9;
+  --display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11151d; --surface: #1a202b; --ink: #e6eaf2; --muted: #9aa4b6; --line: #2d3545;
+    --accent: #8ea2ff; --accent-ink: #0e1430; --accent-soft: #232c4a;
+    --ok: #6fd3a0; --ok-soft: #173326; --bad: #ff9a90; --bad-soft: #3a1c1a; --warn: #f1c46b; --warn-soft: #3a2e14;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11151d; --surface: #1a202b; --ink: #e6eaf2; --muted: #9aa4b6; --line: #2d3545;
+  --accent: #8ea2ff; --accent-ink: #0e1430; --accent-soft: #232c4a;
+  --ok: #6fd3a0; --ok-soft: #173326; --bad: #ff9a90; --bad-soft: #3a1c1a; --warn: #f1c46b; --warn-soft: #3a2e14;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 64px; display: grid; gap: 24px; }
+
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px; }
+h1 { font-family: var(--display); font-weight: 800; font-size: clamp(28px, 4vw, 40px); line-height: 1.05; margin: 0; letter-spacing: -0.01em; }
+.sub { color: var(--muted); margin: 6px 0 0; max-width: 60ch; text-wrap: pretty; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+button { font: inherit; font-weight: 500; border-radius: 8px; padding: 9px 14px; cursor: pointer; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+button:hover { border-color: var(--muted); }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; padding-inline: 18px; }
+button.primary:hover { filter: brightness(1.08); }
+button.ghost { background: transparent; border-color: transparent; color: var(--muted); padding: 6px 8px; }
+button.ghost:hover { color: var(--bad); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 20px; align-items: start; }
+@media (max-width: 820px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px; display: grid; gap: 14px; min-width: 0; }
+.panel h2 { font-family: var(--display); font-weight: 600; font-size: 18px; margin: 0; }
+.label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.count { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+textarea, input[type="text"], input[type="number"] {
+  font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; width: 100%;
+}
+textarea { font-family: var(--mono); font-size: 13.5px; line-height: 1.6; resize: vertical; min-height: 220px; }
+textarea:focus, input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+.rules { display: grid; gap: 12px; }
+.gapline { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.gapline input { width: 84px; font-family: var(--mono); text-align: right; }
+.check { display: flex; gap: 10px; align-items: flex-start; }
+.check input { margin-top: 4px; accent-color: var(--accent); }
+.hint { font-size: 13px; color: var(--muted); margin: 0; }
+
+.cols { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+.col { border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 8px; background: var(--surface); min-width: 0; }
+.col input[type="text"] { font-weight: 600; }
+.col textarea { min-height: 200px; }
+.errs { font-size: 12.5px; color: var(--bad); margin: 0; }
+.addcol { border-style: dashed; color: var(--muted); min-height: 120px; }
+.addcol:hover { color: var(--accent); border-color: var(--accent); }
+
+.status { display: flex; gap: 10px; align-items: center; padding: 10px 14px; border-radius: 10px; font-weight: 500; }
+.status.ok { background: var(--ok-soft); color: var(--ok); }
+.status.bad { background: var(--bad-soft); color: var(--bad); }
+.status.stale { background: var(--warn-soft); color: var(--warn); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
+
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 8px 14px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+thead th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; background: var(--bg); }
+thead tr.group th { font-family: var(--display); text-transform: none; letter-spacing: 0; font-size: 15px; color: var(--ink); }
+td.date { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+td.name { font-weight: 600; }
+th.sep, td.sep { border-left: 1px solid var(--line); }
+tbody tr:last-child td { border-bottom: none; }
+
+.people { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.person { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--surface); display: grid; gap: 4px; min-width: 0; }
+.person .top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.person b { font-weight: 600; }
+.pill { font-family: var(--mono); font-size: 11.5px; padding: 1px 7px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+.pill.none { background: var(--bg); color: var(--muted); }
+.person .dates { font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 9px 16px; border-radius: 8px; font-weight: 500; }
+@media (prefers-reduced-motion: no-preference) {
+  .flash td.name { animation: flash .5s ease-out; }
+  @keyframes flash { from { background: var(--accent-soft); } to { background: transparent; } }
+}
+
+[hidden] { display: none !important; }
+body { margin: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Roster Shuffle</h1>
+      <p class="sub">Randomly assign people to dates. No one repeats within a column, and each person's turns stay a minimum number of days apart. Results only change when you click Shuffle.</p>
+    </div>
+    <div class="actions">
+      <button id="copy">Copy for Sheets</button>
+      <button id="shuffle" class="primary">Shuffle</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <section class="panel" aria-labelledby="h-people">
+      <div class="row"><h2 id="h-people">People</h2><span class="count" id="names-count"></span></div>
+      <textarea id="names" spellcheck="false" aria-label="Names, one per line"></textarea>
+      <div class="rules">
+        <div class="gapline">
+          <label for="gap">At least</label>
+          <input id="gap" type="number" min="0" step="1">
+          <label for="gap">days between a person's turns</label>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="h-dates">
+      <div class="row"><h2 id="h-dates">Date columns</h2><span class="count">one date per line · 10/5/2026 or 2026-10-05</span></div>
+      <div class="cols" id="cols"></div>
+    </section>
+  </div>
+
+  <div id="status" class="status" role="status"></div>
+
+  <div class="tablewrap"><table id="result"></table></div>
+
+  <section class="panel" aria-labelledby="h-check">
+    <div class="row"><h2 id="h-check">By person</h2></div>
+    <div class="people" id="people"></div>
+  </section>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const KEY = 'roster-shuffle-v2';
+const DAY = 86400000;
+const EXAMPLE = {
+  names: ['Avery','Jordan','Priya','Marcus','Sofia','Diego','Hana','Kwame','Lena','Theo'].join('\n'),
+  gap: 21,
+  multi: true,
+  cols: [
+    { label: 'Date 1', dates: ['10/5/2026','10/12/2026','10/19/2026','10/26/2026','11/2/2026','11/9/2026','11/16/2026','11/23/2026','11/30/2026','12/7/2026'].join('\n') },
+    { label: 'Date 2', dates: ['10/8/2026','10/15/2026','10/22/2026','10/29/2026','11/5/2026','11/12/2026','11/19/2026','11/26/2026','12/3/2026','12/10/2026'].join('\n') }
+  ],
+  result: null,
+  stale: false
+};
+
+let S;
+try { S = JSON.parse(localStorage.getItem(KEY)) || null; } catch (e) { S = null; }
+if (!S || !Array.isArray(S.cols)) S = JSON.parse(JSON.stringify(EXAMPLE));
+S.multi = true;
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+
+/* ---------- parsing ---------- */
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const WD = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+function parseDate(raw) {
+  const s = raw.trim();
+  let y, m, d, k;
+  if ((k = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) { y = +k[1]; m = +k[2]; d = +k[3]; }
+  else if ((k = s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2}|\d{4})$/))) { m = +k[1]; d = +k[2]; y = +k[3]; if (y < 100) y += 2000; }
+  else { const t = new Date(s); if (isNaN(t)) return null; y = t.getFullYear(); m = t.getMonth() + 1; d = t.getDate(); }
+  const day = Date.UTC(y, m - 1, d) / DAY;
+  const chk = new Date(day * DAY);
+  if (chk.getUTCMonth() !== m - 1 || chk.getUTCDate() !== d) return null;
+  return { day, y, m, d };
+}
+const fmt = dd => { const t = new Date(dd * DAY); return `${WD[t.getUTCDay()]} ${MONTHS[t.getUTCMonth()]} ${t.getUTCDate()}, ${t.getUTCFullYear()}`; };
+const fmtShort = dd => { const t = new Date(dd * DAY); return `${MONTHS[t.getUTCMonth()]} ${t.getUTCDate()}`; };
+const fmtSheets = dd => { const t = new Date(dd * DAY); return `${t.getUTCMonth() + 1}/${t.getUTCDate()}/${t.getUTCFullYear()}`; };
+const lines = s => s.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+function people() { const seen = new Set(), out = []; for (const n of lines(S.names)) { const k = n.toLowerCase(); if (!seen.has(k)) { seen.add(k); out.push(n); } } return out; }
+function colDates(c) { const ok = [], bad = []; for (const l of lines(c.dates)) { const p = parseDate(l); p ? ok.push(p.day) : bad.push(l); } return { ok, bad }; }
+
+/* ---------- solver: randomized backtracking, fewest-turns-first ---------- */
+function solve() {
+  const ppl = people();
+  const gap = Math.max(0, Math.floor(+S.gap || 0));
+  const cols = S.cols.map(colDates);
+  if (!ppl.length) return { error: 'Add at least one name.' };
+  for (let i = 0; i < cols.length; i++) {
+    if (cols[i].bad.length) return { error: `“${S.cols[i].label || 'Date ' + (i + 1)}” has dates I can't read: ${cols[i].bad.slice(0, 3).join(', ')}. Use 10/5/2026 or 2026-10-05.` };
+    if (cols[i].ok.length > ppl.length) return { error: `“${S.cols[i].label || 'Date ' + (i + 1)}” has ${cols[i].ok.length} dates but only ${ppl.length} people. Add names or remove dates so no one repeats.` };
+  }
+  const slots = [];
+  cols.forEach((c, ci) => c.ok.forEach((day, ri) => slots.push({ ci, ri, day, r: Math.random() })));
+  if (!slots.length) return { error: 'Add some dates to a column.' };
+  if (!S.multi && slots.length > ppl.length) return { error: `There are ${slots.length} dates but only ${ppl.length} people, and each person can only take one date. Turn on “more than one column” or add names.` };
+  slots.sort((a, b) => a.day - b.day || a.r - b.r);
+
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const turns = new Map(ppl.map(p => [p, []]));
+    const used = cols.map(() => new Set());
+    const pick = new Array(slots.length);
+    let budget = 30000;
+    const order = new Map(ppl.map(p => [p, Math.random()]));
+    const fits = (p, s) => !used[s.ci].has(p) && (S.multi || turns.get(p).length === 0) && turns.get(p).every(d => Math.abs(d - s.day) >= gap);
+    const dfs = i => {
+      if (i === slots.length) return true;
+      if (--budget < 0) return false;
+      const s = slots[i];
+      const cands = ppl.filter(p => fits(p, s)).sort((a, b) => turns.get(a).length - turns.get(b).length || order.get(a) - order.get(b));
+      for (const p of cands) {
+        used[s.ci].add(p); turns.get(p).push(s.day); pick[i] = p;
+        if (dfs(i + 1)) return true;
+        used[s.ci].delete(p); turns.get(p).pop();
+        if (budget < 0) return false;
+      }
+      return false;
+    };
+    if (dfs(0)) {
+      const out = cols.map(c => c.ok.map(day => ({ day, name: '' })));
+      slots.forEach((s, i) => out[s.ci][s.ri].name = pick[i]);
+      return { cols: out, gap, labels: S.cols.map((c, i) => c.label || 'Date ' + (i + 1)), people: ppl };
+    }
+    order.clear();
+  }
+  return { error: `Couldn't find an arrangement with ${gap} days between turns. Lower the gap or add more people.` };
+}
+
+/* ---------- rendering ---------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function renderInputs() {
+  $('names').value = S.names;
+  $('gap').value = S.gap;
+    renderCols();
+  renderCounts();
+}
+function renderCols() {
+  const box = $('cols');
+  box.innerHTML = S.cols.map((c, i) => `
+    <div class="col">
+      <div class="row">
+        <input type="text" id="col-label-${i}" data-i="${i}" data-f="label" value="${esc(c.label)}" aria-label="Column name">
+        ${S.cols.length > 1 ? `<button class="ghost" data-del="${i}" aria-label="Remove ${esc(c.label)}">Remove</button>` : ''}
+      </div>
+      <textarea id="col-dates-${i}" data-i="${i}" data-f="dates" spellcheck="false" aria-label="Dates for ${esc(c.label)}">${esc(c.dates)}</textarea>
+      <div class="row"><span class="count" id="col-count-${i}"></span></div>
+      <p class="errs" id="col-err-${i}" hidden></p>
+    </div>`).join('') + `<button class="col addcol" id="addcol">+ Add date column</button>`;
+}
+function renderCounts() {
+  $('names-count').textContent = people().length + ' people';
+  S.cols.forEach((c, i) => {
+    const { ok, bad } = colDates(c);
+    const cnt = $('col-count-' + i), err = $('col-err-' + i);
+    if (cnt) cnt.textContent = ok.length + ' dates';
+    if (err) { err.hidden = !bad.length; err.textContent = bad.length ? "Can't read: " + bad.slice(0, 3).join(', ') : ''; }
+  });
+}
+
+function renderResult(flash) {
+  const st = $('status'), tbl = $('result'), pg = $('people');
+  const R = S.result;
+  if (!R || R.error) {
+    st.hidden = false;
+    st.className = 'status bad';
+    st.innerHTML = `<span class="dot"></span><span>${esc(R ? R.error : 'Click Shuffle to make a roster.')}</span>`;
+    tbl.innerHTML = ''; tbl.parentElement.hidden = true;
+    pg.innerHTML = '';
+    return;
+  }
+  tbl.parentElement.hidden = false;
+  if (S.stale) { st.className = 'status stale'; st.innerHTML = `<span class="dot"></span><span>Inputs changed since this shuffle. Click Shuffle to update.</span>`; }
+  else { st.className = 'status'; st.innerHTML = ''; }
+  st.hidden = !S.stale;
+
+  const rows = Math.max(...R.cols.map(c => c.length));
+  let h = '<thead><tr class="group">' + R.labels.map((l, i) => `<th colspan="2" class="${i ? 'sep' : ''}">${esc(l)}</th>`).join('') + '</tr>';
+  h += '<tr>' + R.labels.map((_, i) => `<th class="${i ? 'sep' : ''}">Date</th><th>Name</th>`).join('') + '</tr></thead><tbody>';
+  for (let r = 0; r < rows; r++) {
+    h += '<tr>' + R.cols.map((c, i) => { const x = c[r]; return x ? `<td class="date ${i ? 'sep' : ''}">${fmt(x.day)}</td><td class="name">${esc(x.name)}</td>` : `<td class="${i ? 'sep' : ''}"></td><td></td>`; }).join('') + '</tr>';
+  }
+  tbl.innerHTML = h + '</tbody>';
+  tbl.classList.remove('flash');
+  if (flash) { void tbl.offsetWidth; tbl.classList.add('flash'); }
+
+  const map = new Map(R.people.map(p => [p, []]));
+  R.cols.forEach((c, i) => c.forEach(x => map.get(x.name) && map.get(x.name).push({ day: x.day, col: R.labels[i] })));
+  let minGap = Infinity;
+  pg.innerHTML = [...map.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([n, t]) => {
+    t.sort((a, b) => a.day - b.day);
+    let g = Infinity; for (let i = 1; i < t.length; i++) g = Math.min(g, t[i].day - t[i - 1].day);
+    if (g < minGap) minGap = g;
+    const pill = !t.length ? '<span class="pill none">no date</span>' : `<span class="pill">${t.length} turn${t.length > 1 ? 's' : ''}${isFinite(g) ? ' · ' + g + 'd apart' : ''}</span>`;
+    return `<div class="person"><div class="top"><b>${esc(n)}</b>${pill}</div><div class="dates">${t.map(x => fmtShort(x.day)).join(' · ') || '—'}</div></div>`;
+  }).join('');
+}
+
+/* ---------- events ---------- */
+function markStale() { if (S.result && !S.result.error) S.stale = true; save(); renderCounts(); renderResult(false); }
+$('names').addEventListener('input', e => { S.names = e.target.value; markStale(); });
+$('gap').addEventListener('input', e => { S.gap = e.target.value; markStale(); });
+$('cols').addEventListener('input', e => {
+  const i = e.target.dataset.i, f = e.target.dataset.f;
+  if (i == null) return;
+  S.cols[+i][f] = e.target.value; markStale();
+});
+$('cols').addEventListener('click', e => {
+  if (e.target.id === 'addcol') { S.cols.push({ label: 'Date ' + (S.cols.length + 1), dates: '' }); renderCols(); markStale(); $('col-label-' + (S.cols.length - 1)).focus(); return; }
+  const d = e.target.dataset.del;
+  if (d != null) { S.cols.splice(+d, 1); renderCols(); markStale(); }
+});
+$('shuffle').addEventListener('click', () => { S.result = solve(); S.stale = false; save(); renderResult(true); });
+
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, 1800); }
+$('copy').addEventListener('click', () => {
+  const R = S.result;
+  if (!R || R.error) { toast('Shuffle first, then copy'); return; }
+  const rows = Math.max(...R.cols.map(c => c.length));
+  const out = [R.labels.flatMap(l => [l + ' date', l + ' name']).join('\t')];
+  for (let r = 0; r < rows; r++) out.push(R.cols.flatMap(c => c[r] ? [fmtSheets(c[r].day), c[r].name] : ['', '']).join('\t'));
+  const text = out.join('\n');
+  const fallback = () => {
+    const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch (e) {}
+    ta.remove(); toast(ok ? 'Copied. Paste into cell A1 of a sheet' : 'Copy blocked. Select the table and copy manually');
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => toast('Copied. Paste into cell A1 of a sheet'), fallback);
+  else fallback();
+});
+
+renderInputs();
+if (!S.result) { S.result = solve(); S.stale = false; save(); }
+renderResult(false);
+</script>
+</body>
+</html>
